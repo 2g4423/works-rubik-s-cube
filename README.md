@@ -1,7 +1,7 @@
 # Rubik's Cube
 
-## instration
+## Instration
 `yarn install`
 
-## start
+## Start
 `yarn start`
