@@ -2,40 +2,19 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { CONFIG } from './config';
 
-const positionKeyframeTrackJSON = {
-  name: '.position',
-  type: 'vector',
-  times: [0, 1, 2],
-  values: [0, 0, 0, 2, 1, 15, 0, 0, 0]
-};
-
-const rotationKeyframeTrackJSON = {
-  name: '.rotation[y]',
-  type: 'number',
-  times: [0, 2],
-  values: [0, 2 * Math.PI],
-  interpolation: THREE.InterpolateSmooth
-};
-
-const clipJSON = {
-  duration: 2,
-  tracks: [positionKeyframeTrackJSON, rotationKeyframeTrackJSON]
-};
-const clip = THREE.AnimationClip.parse(clipJSON);
-
 const materials: THREE.MeshBasicMaterial[] = [
   new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.re }),
   new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.bl }),
   new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.gr }),
   new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.ye }),
   new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.or }),
-  new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.wh }),
-  new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.re })
+  new THREE.MeshBasicMaterial({ color: CONFIG.cube.color.wh })
 ];
 
 function createCubeGroup(): THREE.Group {
   const { width, height, depth } = CONFIG.cube.size;
   const group: THREE.Group = new THREE.Group();
+
   [-1, 0, 1].forEach((x) => {
     [-1, 0, 1].forEach((y) => {
       [-1, 0, 1].forEach((z) => {
@@ -46,6 +25,7 @@ function createCubeGroup(): THREE.Group {
       });
     });
   });
+
   return group;
 }
 
@@ -86,22 +66,66 @@ window.onload = function () {
   // const grid = new THREE.GridHelper(window.innerWidth, window.innerHeight);
   // scene.add(grid);
 
-  // Animaation
-  var mixer = new THREE.AnimationMixer(cube);
-  var action = mixer.clipAction(clip);
-  action.play();
+  const target: THREE.Group = new THREE.Group();
+  scene.add(target);
 
-  window.onresize = function () {
+  // マウスイベントを登録
+  let isMouseDown = false;
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
+  renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
+  renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
+  window.addEventListener('resize', handleWindowresize, false);
+
+  function onDocumentMouseDown(event: any) {
+    event.preventDefault();
+
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects(cube.children);
+
+    if (intersects.length > 0) {
+      isMouseDown = true;
+      controls.enabled = false;
+
+      const intersect = intersects[0].object;
+      console.log(intersect);
+      cube.children.filter((e) => e.position.y === intersect.position.y).forEach((e) => target.add(e));
+    }
+  }
+
+  function onDocumentMouseMove(event: any) {
+    event.preventDefault();
+
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    if (isMouseDown) {
+      target.rotation.y -= pointer.y;
+    }
+  }
+
+  function onDocumentMouseUp(event: any) {
+    event.preventDefault();
+
+    controls.enabled = true;
+    isMouseDown = false;
+  }
+
+  function handleWindowresize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
-  };
+  }
 
   const tick = (): void => {
     requestAnimationFrame(tick);
 
-    mixer.update(0.01);
     controls.update();
     renderer.render(scene, camera);
   };
